@@ -97,7 +97,7 @@ Remove dockers:
 Deploy containers of each member to separate hosts connecting via internet.
 
 Note the docker-compose files don't change much from the local deployment and containers still refer to each other by 
-domain names `api.a.example.com`, `peer1.c.example.com` etc. However they can no longer discover each other within a local
+domain names `api.dmv.walmartlabs.com`, `peer1.banker.walmartlabs.com` etc. However they can no longer discover each other within a local
 docker network and need to resolve these names to real ips on the internet. We use `extra_hosts` setting in docker-compose 
 files to map domain names to real ips which come as args to the script. Specify member hosts ip addresses 
 in [network.sh](network.sh) file or by env variables:
@@ -109,14 +109,17 @@ The setup process takes several steps whose order is important.
 
 Each member generates artifacts on their respective hosts (can be done in parallel):
 ```bash
-# organization a on their host
-./network.sh -m generate-peer -o a
+# organization DMV on their host
+./network.sh -m generate-peer -o dmv
 
-# organization b on their host
-./network.sh -m generate-peer -o b
+# organization Car Dealer on their host
+./network.sh -m generate-peer -o dealer
 
-# organization c on their host
-./network.sh -m generate-peer -o c
+# organization Banker on their host
+./network.sh -m generate-peer -o banker
+
+# organization Insurance on their host
+./network.sh -m generate-peer -o insurance
 ```
 
 After certificates are generated each script starts a `www` docker instance to serve them to other members: the orderer
@@ -143,14 +146,17 @@ arguments alphabetically, ex.: `ORG1=aorg ORG2=borg ORG3=corg` then the channels
 
 Each member starts:
 ```bash
-# organization a on their host
+# organization DMV on their host
 ./network.sh -m up-1
 
-# organization b on their host
+# organization Dealer on their host
 ./network.sh -m up-2
 
-# organization c on their host
+# organization Banker on their host
 ./network.sh -m up-3
+
+# organization Insurance on their host
+./network.sh -m up-4
 ```
 
 
