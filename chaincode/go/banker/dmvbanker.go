@@ -152,9 +152,6 @@ func (t *DmvDealerChaincode) loan(stub shim.ChaincodeStubInterface, args []strin
 }
 
 func (t *DmvDealerChaincode) query(stub shim.ChaincodeStubInterface, args []string) pb.Response {
-	if len(args) != 1 {
-		return pb.Response{Status: 403, Message: "incorrect number of arguments"}
-	}
 
 	if args[0] == "health" {
 		logger.Info("Health status Ok")
@@ -171,6 +168,11 @@ func (t *DmvDealerChaincode) query(stub shim.ChaincodeStubInterface, args []stri
 	if org == "" {
 		logger.Debug("Org is null")
 	} else if org == "dmv" {
+
+		if len(args) != 1 {
+			return pb.Response{Status: 403, Message: "incorrect number of arguments"}
+		}
+
 		key := ssn + "@" + args[0]
 
 		bytes, err := stub.GetState(key)
@@ -179,6 +181,10 @@ func (t *DmvDealerChaincode) query(stub shim.ChaincodeStubInterface, args []stri
 		}
 		return shim.Success(bytes)
 	} else if org == "banker" {
+
+		if len(args) != 2 {
+			return pb.Response{Status: 403, Message: "incorrect number of arguments"}
+		}
 
 		key := args[0] + "@" + args[1]
 
