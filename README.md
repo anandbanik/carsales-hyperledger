@@ -92,6 +92,66 @@ Remove dockers:
 ./network.sh -m clean
 ```
 
+## Decentralized deployment
+
+Deploy containers of each member to separate hosts connecting via internet.
+
+Note the docker-compose files don't change much from the local deployment and containers still refer to each other by 
+domain names `api.a.example.com`, `peer1.c.example.com` etc. However they can no longer discover each other within a local
+docker network and need to resolve these names to real ips on the internet. We use `extra_hosts` setting in docker-compose 
+files to map domain names to real ips which come as args to the script. Specify member hosts ip addresses 
+in [network.sh](network.sh) file or by env variables:
+```bash
+export IP_ORDERER=54.235.3.243 IP1=54.235.3.231 IP2=54.235.3.232 IP3=54.235.3.233
+```  
+
+The setup process takes several steps whose order is important.
+
+Each member generates artifacts on their respective hosts (can be done in parallel):
+```bash
+# organization a on their host
+./network.sh -m generate-peer -o a
+
+# organization b on their host
+./network.sh -m generate-peer -o b
+
+# organization c on their host
+./network.sh -m generate-peer -o c
+```
+
+After certificates are generated each script starts a `www` docker instance to serve them to other members: the orderer
+ will download the certs to create the ledger and other peers will download to use them to secure communication by TLS.  
+
+Now the orderer can generate genesis block and channel tx files by collecting certs from members. On the orderer's host:
+```bash
+./network.sh -m generate-orderer
+```
+
+And start the orderer:
+```bash
+./network.sh -m up-orderer
+```
+
+When the orderer is up, each member can start services on their hosts and their peers connect to the orderer to create 
+channels. Note that in Fabric one member creates a channel and others join to it via a channel block file. 
+Thus channel _creator_ members make these block files available to _joiners_ via their `www` docker instances. 
+Also note the starting order of members is important, especially for bilateral channels connecting pairs of members, 
+for example for channel `a-b` member `a` needs to start first to create the channel and serve the block file, 
+and then `b` starts, downloads the block file and joins the channel. It's a good idea to order organizations in script
+arguments alphabetically, ex.: `ORG1=aorg ORG2=borg ORG3=corg` then the channels are named accordingly 
+`aorg-borg aorg-corg borg-corg` and it's clear who creates, who joins a bilateral channel and who needs to start first.
+
+Each member starts:
+```bash
+# organization a on their host
+./network.sh -m up-1
+
+# organization b on their host
+./network.sh -m up-2
+
+# organization c on their host
+./network.sh -m up-3
+```
 
 
 ## How it works
