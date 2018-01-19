@@ -203,3 +203,7 @@ ledger/docker-compose-dmv.yaml
 ledger/docker-compose-dmv.yaml-e
 ledger/docker-compose-insurance.yaml
 ledger/docker-compose-insurance.yaml-e
+www/artifacts/dmv-banker.block
+www/artifacts/dmv-dealer.block
+artifacts/dmv-dealer.block
+artifacts/dmv-banker.block
