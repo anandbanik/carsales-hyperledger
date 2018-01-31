@@ -3,7 +3,7 @@ version: '2'
 services:
   orderer:
     container_name: orderer
-    image: hyperledger/fabric-orderer:x86_64-1.0.0
+    image: hyperledger/fabric-orderer:x86_64-1.1.0-alpha
     environment:
       - ORDERER_GENERAL_LOGLEVEL=debug
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
@@ -16,19 +16,21 @@ services:
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric
     command: orderer
     volumes:
-      - ./dev-msp:/etc/hyperledger/msp
-      - ./dev-genesis.block:/etc/hyperledger/fabric/dev-genesis.block
+      #- ./dev-msp:/etc/hyperledger/msp
+      - ./msp:/etc/hyperledger/msp
+      #- ./dev-genesis.block:/etc/hyperledger/fabric/dev-genesis.block
+      - ./orderer.block:/etc/hyperledger/fabric/dev-genesis.block
     ports:
       - 7050:7050
   
   # Added for CouchDB as State DB
   peerdb:
     container_name: peerdb
-    image: hyperledger/fabric-couchdb:x86_64-1.0.0
+    image: hyperledger/fabric-couchdb:x86_64-1.1.0-preview
 
   peer:
     container_name: peer
-    image: hyperledger/fabric-peer:x86_64-1.0.0
+    image: hyperledger/fabric-peer:x86_64-1.1.0-alpha
     environment:
       - CORE_PEER_ID=peer
       - CORE_PEER_ADDRESS=peer:7051
@@ -43,11 +45,13 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=peerdb:5984
     volumes:
       - /var/run/:/host/var/run/
-      - ./dev-msp:/etc/hyperledger/msp
+      #- ./dev-msp:/etc/hyperledger/msp
+      - ./msp:/etc/hyperledger/msp
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: peer node start --peer-chaincodedev=true -o orderer:7050
     ports:
       - 7051:7051
+      - 7052:7052
       - 7053:7053
     depends_on:
       - orderer
@@ -55,7 +59,7 @@ services:
 
   cli:
     container_name: cli
-    image: hyperledger/fabric-tools:x86_64-1.0.0
+    image: hyperledger/fabric-tools:x86_64-1.1.0-alpha
     tty: true
     environment:
       - GOPATH=/opt/gopath
@@ -69,14 +73,17 @@ services:
     volumes:
       - /var/run/:/host/var/run/
       - ../chaincode/go:/opt/gopath/src
-      - ./myc.block:/etc/hyperledger/myc.block
+      #- ./myc.block:/etc/hyperledger/myc.block
       - ./myc.tx:/etc/hyperledger/myc.tx
-      - ./dev-msp:/etc/hyperledger/msp
-    command: >
-      bash -c "peer channel create -c myc -f myc.tx -o orderer:7050
-      && peer channel join -b myc.block
-      && sleep 600000
-      && exit 0"
+      #- ./dev-msp:/etc/hyperledger/msp
+      - ./msp:/etc/hyperledger/msp
+      - ./script.sh:/etc/hyperledger/script.sh
+#    command: >
+#      bash -c "peer channel create -c myc -f myc.tx -o orderer:7050
+#      && peer channel join -b myc.block
+#      && sleep 600000
+#      && exit 0"
+#    command: ./script.sh
     depends_on:
       - orderer
       - peer

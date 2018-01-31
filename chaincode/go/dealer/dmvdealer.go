@@ -1,15 +1,17 @@
 package main
 
 import (
-	"fmt"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
-	pb "github.com/hyperledger/fabric/protos/peer"
-	"strings"
-	"encoding/pem"
+	"bytes"
 	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
+	"fmt"
 	"strconv"
-	"bytes"
+	"strings"
+
+	"github.com/hyperledger/fabric/core/chaincode/lib/cid"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var logger = shim.NewLogger("CarSalesChaincode")
@@ -18,10 +20,10 @@ type CarSalesChaincode struct {
 }
 
 type Negotiation struct {
-	Ssn string `json:"ssn"`
-	VinNumber string `json:"vin"`
-	FinalPrice int `json:"price"`
-	Org string `json:"org"`
+	Ssn        string `json:"ssn"`
+	VinNumber  string `json:"vin"`
+	FinalPrice int    `json:"price"`
+	Org        string `json:"org"`
 }
 
 func (t *CarSalesChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
@@ -34,20 +36,19 @@ func (t *CarSalesChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 	function, args := stub.GetFunctionAndParameters()
 	if function == "negotiate" {
 		return t.negotiate(stub, args)
-	}else if function == "query" {
+	} else if function == "query" {
 		return t.query(stub, args)
-	}else if function == "qryNegotiate" {
+	} else if function == "qryNegotiate" {
 		return t.queryNegotiationsByPrice(stub, args)
 	}
 
-	return pb.Response{Status:403, Message:"unknown function name"}
+	return pb.Response{Status: 403, Message: "unknown function name"}
 }
-
 
 func (t *CarSalesChaincode) negotiate(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 
 	if len(args) != 2 {
-		return pb.Response{Status:403, Message:"incorrect number of arguments"}
+		return pb.Response{Status: 403, Message: "incorrect number of arguments"}
 	}
 
 	creatorBytes, err := stub.GetCreator()
@@ -59,29 +60,27 @@ func (t *CarSalesChaincode) negotiate(stub shim.ChaincodeStubInterface, args []s
 
 	price, err := strconv.Atoi(args[1])
 
-	if(err != nil){
+	if err != nil {
 		return shim.Error("Invalid Car price amount, expecting a integer value")
 	}
 
 	vin := args[0]
 
 	negObj := &Negotiation{
-					Ssn: ssnNumber,
-					Org: org,
-					VinNumber: vin,
-					FinalPrice: price}
+		Ssn:        ssnNumber,
+		Org:        org,
+		VinNumber:  vin,
+		FinalPrice: price}
 
-	jsonNegObj, err := json.Marshal(negObj)	
+	jsonNegObj, err := json.Marshal(negObj)
 
-	
-
-	if(err != nil){
+	if err != nil {
 		return shim.Error("Cannot create Json Object")
 	}
 
-	logger.Debug("Json Obj: "+string(jsonNegObj))
+	logger.Debug("Json Obj: " + string(jsonNegObj))
 
-	key := ssnNumber+"@"+vin
+	key := ssnNumber + "@" + vin
 
 	err = stub.PutState(key, jsonNegObj)
 
@@ -95,7 +94,7 @@ func (t *CarSalesChaincode) negotiate(stub shim.ChaincodeStubInterface, args []s
 func (t *CarSalesChaincode) query(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 
 	if len(args) != 1 {
-		return pb.Response{Status:403, Message:"incorrect number of arguments"}
+		return pb.Response{Status: 403, Message: "incorrect number of arguments"}
 	}
 
 	if args[0] == "health" {
@@ -103,22 +102,37 @@ func (t *CarSalesChaincode) query(stub shim.ChaincodeStubInterface, args []strin
 		return shim.Success(nil)
 	}
 
+	mspid, err := cid.GetMSPID(stub)
+	if err != nil {
+		return shim.Error("cannot get creator")
+	}
+
+	logger.Info("MSPID: " + mspid)
+
 	vin := args[0]
 
-	
+	creatorBytes, err := stub.GetCreator()
+	if err != nil {
+		return shim.Error("cannot get creator")
+	}
+	ssnNumber, org := getCreator(creatorBytes)
 
-	negObj, err := stub.GetState(vin)
+	logger.Debug("Org: " + org)
+
+	key := ssnNumber + "@" + vin
+
+	negObj, err := stub.GetState(key)
 	if err != nil {
 		return shim.Error("Cannot get State")
 	}
 
-	logger.Debug("Value: "+string(negObj))
+	logger.Debug("Value: " + string(negObj))
 
 	return shim.Success(negObj)
 }
 
-var getCreator = func (certificate []byte) (string, string) {
-	data := certificate[strings.Index(string(certificate), "-----"): strings.LastIndex(string(certificate), "-----")+5]
+var getCreator = func(certificate []byte) (string, string) {
+	data := certificate[strings.Index(string(certificate), "-----") : strings.LastIndex(string(certificate), "-----")+5]
 	block, _ := pem.Decode([]byte(data))
 	cert, _ := x509.ParseCertificate(block.Bytes)
 	organization := cert.Issuer.Organization[0]
@@ -148,7 +162,6 @@ func (t *CarSalesChaincode) queryNegotiationsByPrice(stub shim.ChaincodeStubInte
 	}
 	return shim.Success(queryResults)
 }
-
 
 func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString string) ([]byte, error) {
 
